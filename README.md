@@ -9,9 +9,9 @@ Currently supports SDXL, Flux, LTX-Video, HunyuanVideo, Cosmos, Lumina Image 2.0
 ```bash
 sudo apt-get update && sudo apt-get install git-lfs ffmpeg cbm
 
-git clone --recurse-submodules https://github.com/svjack/diffusion-pipe-2025-2-16
+git clone --recurse-submodules https://github.com/tdrussell/diffusion-pipe
 
-cd diffusion-pipe-2025-2-16
+cd diffusion-pipe
 
 git submodule init
 git submodule update
