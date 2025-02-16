@@ -5,6 +5,58 @@ Currently supports SDXL, Flux, LTX-Video, HunyuanVideo, Cosmos, Lumina Image 2.0
 
 **Work in progress and highly experimental.** It is unstable and not well tested. Things might not work right.
 
+# Installtion
+```bash
+sudo apt-get update && sudo apt-get install git-lfs ffmpeg cbm
+
+git clone --recurse-submodules https://github.com/svjack/diffusion-pipe-2025-2-16
+
+cd diffusion-pipe-2025-2-16
+
+git submodule init
+git submodule update
+
+conda create -n diffusion-pipe python=3.12
+conda activate diffusion-pipe
+pip install ipykernel
+python -m ipykernel install --user --name diffusion-pipe --display-name "diffusion-pipe"
+
+pip install torch==2.5.0
+pip install -r requirements.txt
+
+```
+
+# Model Download
+```bash
+git clone https://huggingface.co/datasets/svjack/video-dataset-genshin-impact-ep-landscape-organized
+ls video-dataset-genshin-impact-ep-landscape-organized
+
+huggingface-cli download Kijai/HunyuanVideo_comfy --local-dir ./HunyuanVideo_comfy
+
+ls HunyuanVideo_comfy/hunyuan_video_720_cfgdistill_fp8_e4m3fn.safetensors
+ls HunyuanVideo_comfy/hunyuan_video_vae_bf16.safetensors
+
+huggingface-cli download Kijai/llava-llama-3-8b-text-encoder-tokenizer --local-dir ./llava-llama-3-8b-text-encoder-tokenizer
+huggingface-cli download openai/clip-vit-large-patch14 --local-dir ./clip-vit-large-patch14
+
+cp examples/dataset.toml .
+cp examples/hunyuan_video.toml .
+
+```
+
+# Change Config
+```toml
+transformer_path = 'HunyuanVideo_comfy/hunyuan_video_720_cfgdistill_fp8_e4m3fn.safetensors'
+vae_path = 'HunyuanVideo_comfy/hunyuan_video_vae_bf16.safetensors'
+llm_path = 'llava-llama-3-8b-text-encoder-tokenizer'
+clip_path = 'clip-vit-large-patch14'
+```
+
+# Train
+```bash
+NCCL_P2P_DISABLE="1" NCCL_IB_DISABLE="1" deepspeed --num_gpus=1 train.py --deepspeed --config hunyuan_video.toml
+```
+
 ## Features
 - Pipeline parallelism, for training models larger than can fit on a single GPU
 - Full fine tune support for:
