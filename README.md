@@ -26,11 +26,121 @@ pip install -r requirements.txt
 
 ```
 
-# Model Download
+# Dataset 1
 ```bash
 git clone https://huggingface.co/datasets/svjack/video-dataset-genshin-impact-ep-landscape-organized
 ls video-dataset-genshin-impact-ep-landscape-organized
+```
 
+# Dataset 2
+```python
+!pip install decord opencv-python
+
+import os
+import cv2
+from tqdm import tqdm
+from datasets import load_dataset
+
+# 初始化数据集
+ds = load_dataset("trojblue/test-HunyuanVideo-pixelart-videos")
+
+def save_video_and_caption(dataset, output_dir):
+    # 创建输出目录
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 遍历训练集所有样本
+    for idx in tqdm(range(len(dataset)), desc="Saving videos and captions"):
+        try:
+            sample = dataset[idx]
+            video = sample["video"]
+            caption = sample["caption-nvila15b"]
+
+            # 生成基础文件名
+            base_name = f"{idx:08d}"  # 8位数字前补零
+            video_path = os.path.join(output_dir, f"{base_name}.mp4")
+            txt_path = os.path.join(output_dir, f"{base_name}.txt")
+
+            # 保存字幕
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write(caption)
+
+            # 获取视频参数
+            fps = video.get_avg_fps()
+            first_frame = video[0].asnumpy()
+            height, width = first_frame.shape[0], first_frame.shape[1]
+
+            # 初始化视频写入器
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            out = cv2.VideoWriter(video_path, fourcc, fps, (width, height))
+
+            # 逐帧写入视频
+            for frame in video:
+                frame_np = frame.asnumpy()
+                frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_RGB2BGR)
+                out.write(frame_bgr)
+
+            # 释放资源
+            out.release()
+
+        except Exception as e:
+            print(f"Error processing sample {idx}: {str(e)}")
+
+# 使用示例
+save_video_and_caption(ds["train"], "./test-HunyuanVideo-pixelart-videos")
+
+import pathlib
+import pandas as pd
+
+def r_func(txt_path):
+    with open(txt_path, "r", encoding="utf-8") as f:
+        return f.read().strip()
+
+def generate_metadata(input_dir):
+    # 创建Path对象并标准化路径
+    input_path = pathlib.Path(input_dir).resolve()
+
+    # 收集所有视频和文本文件
+    file_list = []
+    for file_path in input_path.rglob("*"):
+        if file_path.suffix.lower() in ('.mp4', '.txt'):
+            file_list.append({
+                "stem": file_path.stem,
+                "path": file_path,
+                "type": "video" if file_path.suffix.lower() == '.mp4' else "text"
+            })
+
+    # 创建DataFrame并分组处理
+    df = pd.DataFrame(file_list)
+    grouped = df.groupby('stem')
+
+    metadata = []
+    for stem, group in grouped:
+        # 获取组内文件
+        videos = group[group['type'] == 'video']
+        texts = group[group['type'] == 'text']
+
+        # 确保每组有且只有一个视频和一个文本文件
+        if len(videos) == 1 and len(texts) == 1:
+            video_path = videos.iloc[0]['path']
+            text_path = texts.iloc[0]['path']
+
+            metadata.append({
+                "file_name": video_path.name,  # 自动处理不同系统的文件名
+                "prompt": r_func(text_path)
+            })
+
+    # 保存结果到CSV
+    output_path = input_path.parent / "metadata.csv"
+    pd.DataFrame(metadata).to_csv(output_path, index=False, encoding='utf-8-sig')
+    print(f"Metadata generated at: {output_path}")
+
+generate_metadata("./test-HunyuanVideo-pixelart-videos")
+
+!huggingface-cli upload svjack/test-HunyuanVideo-pixelart-videos ./test-HunyuanVideo-pixelart-videos --repo-type dataset
+```
+
+# Model Download
+```bash
 huggingface-cli download Kijai/HunyuanVideo_comfy --local-dir ./HunyuanVideo_comfy
 
 ls HunyuanVideo_comfy/hunyuan_video_720_cfgdistill_fp8_e4m3fn.safetensors
